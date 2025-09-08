@@ -1,0 +1,3 @@
+# MQTT simulator minimal dependencies
+paho-mqtt>=1.6.1
+certifi>=2023.7.22

@@ -1,0 +1,308 @@
+<!-- Pivot Connect + Control (spec-perfect; with legacy->spec normalizer) -->
+<div id="pivot-connect-widget" style="margin:24px 0;">
+  <style>
+    #pivot-connect-widget .pc-card{border:1px solid #e5e7eb;border-radius:12px;padding:18px;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+    #pivot-connect-widget .pc-title{font-size:28px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    #pivot-connect-widget .pc-row{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+    #pivot-connect-widget .pc-input{flex:1 1 240px;min-width:240px;padding:10px 12px;border:1px solid #d1d5db;border-radius:8px}
+    #pivot-connect-widget .pc-input,#pivot-connect-widget select.pc-input,#pivot-connect-widget input.pc-input{height:40px;line-height:1.2;box-sizing:border-box;font-size:14px;-webkit-appearance:auto;-moz-appearance:auto;appearance:auto}
+    #pivot-connect-widget label .pc-input{min-width:auto}
+    #pivot-connect-widget .pc-btn{padding:10px 14px;border:0;border-radius:8px;cursor:pointer}
+    #pivot-connect-widget .pc-btn.primary{background:#2563eb;color:#fff}
+    #pivot-connect-widget .pc-btn.ghost{background:#f3f4f6}
+    #pivot-connect-widget .pc-btn.success{background:#16a34a;color:#fff}
+    #pivot-connect-widget .pc-btn.danger{background:#dc2626;color:#fff}
+    #pivot-connect-widget .pc-badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px}
+    #pivot-connect-widget .ok{background:#10b9811a;color:#047857;border:1px solid #10b98155}
+    #pivot-connect-widget .err{background:#ef44441a;color:#991b1b;border:1px solid #ef444455}
+    #pivot-connect-widget .pc-grid{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:10px;margin-top:10px}
+    #pivot-connect-widget .pc-tile{border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fafbff}
+    #pivot-connect-widget .pc-k{font-size:12px;color:#6b7280}
+    #pivot-connect-widget .pc-v{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px;white-space:pre-wrap}
+    #pivot-connect-widget .pc-log{background:#0b1020;color:#e6edf3;border-radius:12px;padding:14px;margin-top:12px;min-height:160px;white-space:pre-wrap;font-family:ui-monospace,Menlo,Consolas,monospace}
+    #pivot-connect-widget .pc-note{font-size:13px;color:#6b7280;margin-top:6px}
+    #pivot-connect-widget code{background:#eef2ff;border-radius:6px;padding:1px 6px}
+    #pivot-connect-widget .pc-hr{margin:16px 0;border:none;border-top:1px solid #eee}
+    @media (max-width:900px){#pivot-connect-widget .pc-grid{grid-template-columns:repeat(2,1fr)}}
+  </style>
+
+  <!-- CONNECT CARD -->
+  <div class="pc-card">
+    <div class="pc-title">
+      <span>Pivot Connect</span>
+      <span id="pc-status" class="pc-badge err">Disconnected</span>
+    </div>
+    <div class="pc-row">
+      <input id="pc-tower" class="pc-input" placeholder="Tower ID (e.g., FARM-XXXX…)" />
+      <input id="pc-pass" class="pc-input" placeholder="Tower Password" type="password" />
+      <button id="pc-connect" class="pc-btn primary">Connect</button>
+      <button id="pc-disconnect" class="pc-btn ghost" disabled>Disconnect</button>
+    </div>
+    <div class="pc-row">
+      <button id="pc-start" class="pc-btn success" disabled>Start Pivot</button>
+      <button id="pc-stop" class="pc-btn danger" disabled>Stop Pivot</button>
+    </div>
+    <div class="pc-row pc-note">
+      Topics:
+      <code id="pc-topics">farm/&lt;TowerID&gt;/(status|device/status|sensor|notification|control|device|ack|err|motor/+/ack|motor/+/err)</code>
+    </div>
+    <div class="pc-grid">
+      <div class="pc-tile"><div class="pc-k">Status</div><div id="tile-status" class="pc-v">—</div></div>
+      <div class="pc-tile"><div class="pc-k">Device Status</div><div id="tile-devstat" class="pc-v">—</div></div>
+      <div class="pc-tile"><div class="pc-k">Sensor</div><div id="tile-sensor" class="pc-v">—</div></div>
+      <div class="pc-tile"><div class="pc-k">Notification</div><div id="tile-note" class="pc-v">—</div></div>
+    </div>
+    <pre id="pc-log" class="pc-log"></pre>
+  </div>
+
+  <!-- CONTROL CARD -->
+  <div class="pc-card" style="margin-top:16px">
+    <div class="pc-title">Pivot Control</div>
+
+    <div class="pc-row" style="display:grid;grid-template-columns:repeat(6,minmax(160px,1fr));gap:12px">
+      <label style="display:flex;flex-direction:column;gap:6px">Run
+        <select id="ctl-run" class="pc-input"><option value="true">Start</option><option value="false">Stop</option></select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Direction
+        <select id="ctl-dir" class="pc-input"><option>CW</option><option>CCW</option></select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Mode
+        <select id="ctl-mode" class="pc-input"><option>WET</option><option>DRY</option></select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Speed (%)
+        <input id="ctl-speed" class="pc-input" type="number" min="0" max="100" value="75" />
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Pressure (bar)
+        <input id="ctl-press" class="pc-input" type="number" step="0.1" min="0" value="2.5" />
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Auth Key
+        <input id="ctl-auth" class="pc-input" type="text" placeholder="abc123" />
+      </label>
+    </div>
+
+    <div class="pc-row" style="margin-top:6px">
+      <button id="btn-send-control" class="pc-btn primary">Send Control</button>
+    </div>
+
+    <hr class="pc-hr" />
+
+    <div class="pc-title" style="font-size:18px;margin:0 0 8px 0">Device Management</div>
+    <div class="pc-row" style="display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:12px">
+      <label style="display:flex;flex-direction:column;gap:6px">Device Action
+        <select id="dev-action" class="pc-input"><option>ADD_GPS</option><option>ADD_MOTOR</option></select>
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Device Serial
+        <input id="dev-serial" class="pc-input" type="text" placeholder="GPS-987654321 or MOTOR-123456789" />
+      </label>
+      <label style="display:flex;flex-direction:column;gap:6px">Motor Type (optional)
+        <input id="dev-type" class="pc-input" type="text" placeholder="PUMP / DRIVE" />
+      </label>
+      <div style="align-self:end"><button id="btn-send-device" class="pc-btn success">Send Device Cmd</button></div>
+    </div>
+
+    <hr class="pc-hr" />
+
+    <div class="pc-title" style="font-size:18px;margin:0 0 8px 0">Per-Motor Control</div>
+    <div class="pc-row" style="display:grid;grid-template-columns:repeat(3,minmax(160px,1fr));gap:12px">
+      <label style="display:flex;flex-direction:column;gap:6px">Motor ID
+        <input id="motor-id" class="pc-input" type="text" placeholder="PUMP-001" />
+      </label>
+      <button id="btn-motor-start" class="pc-btn" style="background:#0ea5e9;color:#fff;align-self:end">START_MOTOR</button>
+      <button id="btn-motor-stop" class="pc-btn danger" style="align-self:end">STOP_MOTOR</button>
+    </div>
+  </div>
+
+  <div id="pc-toast" style="display:none;position:fixed;right:18px;bottom:18px;padding:10px 14px;border-radius:8px;color:#fff;background:#065f46;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:9999"></div>
+</div>
+
+<script>
+(function(){
+  /* ---------- constants ---------- */
+  const BROKER_URL      = 'wss://o7fd7307.ala.us-east-1.emqxsl.com:8084/mqtt';
+  const CONNECT_TIMEOUT = 8000, RECONNECT_MS = 2000, ACK_TIMEOUT_MS = 15000;
+
+  /* ---------- dom ---------- */
+  const $=id=>document.getElementById(id);
+  const elStatus=$('pc-status'), elTower=$('pc-tower'), elPass=$('pc-pass'),
+        btnConn=$('pc-connect'), btnDisc=$('pc-disconnect'),
+        btnStart=$('pc-start'), btnStop=$('pc-stop'),
+        elTopics=$('pc-topics'), elLog=$('pc-log');
+  const tileStatus=$('tile-status'), tileDev=$('tile-devstat'), tileSensor=$('tile-sensor'), tileNote=$('tile-note');
+
+  /* ---------- ui helpers ---------- */
+  function setBadge(t,ok){ elStatus.textContent=t; elStatus.className='pc-badge '+(ok?'ok':'err'); }
+  function log(line){ const ts=new Date().toLocaleTimeString(); elLog.textContent=`[${ts}] ${line}\n`+elLog.textContent; }
+  function toast(msg,ok=true){ const el=$('pc-toast'); el.style.background=ok?'#065f46':'#7f1d1d'; el.textContent=msg; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',2200); }
+  function setConnectedUI(on){ btnConn.disabled=on; btnDisc.disabled=!on; btnStart.disabled=!on; btnStop.disabled=!on; elTower.disabled=on; elPass.disabled=on; }
+  function pretty(v){ try{ if(typeof v==='string'){const j=JSON.parse(v); return JSON.stringify(j,null,2);} }catch(_){ } if(typeof v==='object') return JSON.stringify(v,null,2); return String(v); }
+  function valOf(el){ return ('value' in el? el.value: el.textContent || '').trim(); }
+  function resetTiles(){ tileStatus.textContent=tileDev.textContent=tileSensor.textContent=tileNote.textContent='—'; }
+
+  /* ---------- mqtt state ---------- */
+  let client=null, currentTower='', topics={};
+  const pending=new Map(), timedOut=new Set();
+  function clearAllTimers(){ for(const {timer} of pending.values()) try{clearTimeout(timer);}catch(_){ } pending.clear(); timedOut.clear(); }
+
+  function buildOptions(username,password){ return { clientId:'farm_ui_'+Math.random().toString(16).slice(2,10), username, password, clean:true, reconnectPeriod:RECONNECT_MS, connectTimeout:CONNECT_TIMEOUT, keepalive:30, resubscribe:true }; }
+  function ensureMqtt(cb){ if(window.mqtt){cb();return;} const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js'; s.onload=cb; s.onerror=()=>{const s2=document.createElement('script'); s2.src='https://unpkg.com/mqtt/dist/mqtt.min.js'; s2.onload=cb; s2.onerror=()=>{setBadge('Script load error',false);log('❌ mqtt.js failed to load');}; document.head.appendChild(s2);}; document.head.appendChild(s); }
+
+  function subscribeAll(){
+    const list=[topics.status,topics.deviceStatus,topics.sensor,topics.notification,topics.ack,topics.err,topics.motorAck,topics.motorErr].filter(Boolean);
+    client.subscribe(list,{qos:0},(err,granted)=>{ if(err) log(`⚠️ Subscribe failed: ${err.message||'Unspecified'}`); else log(`📬 Subscribed: ${granted.map(g=>g.topic).join(', ')}`); });
+  }
+
+  /* ---------- SPEC NORMALIZERS (fix legacy keys/values) ---------- */
+  function toSpecPivot(p){
+    // accept run true/false or strings
+    const r = (p.run ?? p.run_state ?? p.start);
+    let run;
+    if (typeof r==='boolean') run = r ? 'START' : 'STOP';
+    else run = String(r||'').toUpperCase();
+
+    const direction = String(p.direction ?? p.dir ?? '').toUpperCase();
+    const mode      = String(p.mode ?? '').toUpperCase();
+    const speed     = Number(p.speed ?? 0);
+    const pressure  = Number(p.pressure ?? p.pressure_setting ?? p.pressureSetting ?? 0);
+    const authKey   = p.authKey ?? p.auth_key ?? '';
+
+    return { type:'PIVOT_CMD', run, direction, mode, speed, pressure, authKey };
+  }
+  function toSpecDevice(p){
+    return {
+      type:'DEVICE_CMD',
+      action: String(p.action ?? '').toUpperCase(),
+      serial: p.serial ?? p.device_serial ?? '',
+      deviceType: p.deviceType ?? p.motor_type ?? ''
+    };
+  }
+  function toSpecMotor(p){
+    const motorId = p.motorId ?? p.motor_id ?? '';
+    const command = String(p.command ?? p.action ?? '').toUpperCase(); // START_MOTOR | STOP_MOTOR
+    return { type:'MOTOR_CMD', command, motorId };
+  }
+
+  function publish(topic,payload,btn=null){
+    const corr = 'c'+Math.random().toString(16).slice(2,10)+Date.now().toString(36);
+    const msg  = { ...payload, corr, ts: Date.now() };
+    const json = JSON.stringify(msg);
+    client.publish(topic,json,{qos:0,retain:false},err=>{ if(err) log(`⚠️ Publish error: ${err.message||err}`); else log(`🚀 ${topic} ← ${json}`); });
+    if(btn){
+      btn.disabled=true;
+      const timer=setTimeout(()=>{
+        const rec=pending.get(corr); if(!rec) return;
+        pending.delete(corr); timedOut.add(corr); try{rec.btn.disabled=false;}catch(_){}
+        log(`⏱️ Ack timeout for ${rec.label||'cmd'} (corr=${corr})`); toast('Command timeout',false);
+      }, ACK_TIMEOUT_MS);
+      pending.set(corr,{btn,label:payload?.type||'cmd',timer});
+    }
+  }
+
+  /* ---------- Public API ---------- */
+  window.PC = {
+    sendPivotControl(params,btn){ if(!topics.control) return log('⚠️ Not connected'); publish(topics.control, toSpecPivot(params), btn||null); },
+    sendDeviceCmd(params,btn){ if(!topics.device) return log('⚠️ Not connected'); publish(topics.device, toSpecDevice(params), btn||null); },
+    sendMotorControl(params,btn){
+      const spec = toSpecMotor(params);
+      if(!spec.motorId) return log('⚠️ Missing motorId');
+      const topic = `farm/${currentTower}/motor/${spec.motorId}/control`;
+      publish(topic, spec, btn||null);
+    }
+  };
+
+  /* ---------- ACK/ERR ---------- */
+  function handleAckErr(topic,text){
+    try{
+      const j=JSON.parse(text||'{}'); const {corr,ok}=j; if(!corr) return;
+      if(pending.has(corr)){
+        const rec=pending.get(corr); clearTimeout(rec.timer); pending.delete(corr); try{rec.btn.disabled=false;}catch(_){}
+        const failed = topic===topics.err || topic.endsWith('/err') || ok===false;
+        if(failed){ log(`❌ Command failed (corr=${corr}): ${text}`); toast('Command failed',false); }
+        else{ log(`✅ Ack (corr=${corr})`); toast('Command acknowledged',true); }
+      }else if(timedOut.has(corr)){
+        timedOut.delete(corr); const isErr=topic===topics.err || topic.endsWith('/err') || ok===false;
+        log(`🕑 Late ${isErr?'err':'ack'} (corr=${corr}) — arrived after timeout`);
+      }else{
+        log(`ℹ️ Ack/Err for unknown corr=${corr} → ${text}`);
+      }
+    }catch(_){}
+  }
+
+  /* ---------- connect ---------- */
+  function connectNow(tower,pass,{freshSwitch}={freshSwitch:false}){
+    const nextTopics={
+      status:`farm/${tower}/status`, deviceStatus:`farm/${tower}/device/status`,
+      sensor:`farm/${tower}/sensor`, notification:`farm/${tower}/notification`,
+      control:`farm/${tower}/control`, device:`farm/${tower}/device`,
+      ack:`farm/${tower}/ack`, err:`farm/${tower}/err`,
+      motorAck:`farm/${tower}/motor/+/ack`, motorErr:`farm/${tower}/motor/+/err`
+    };
+    if(freshSwitch || tower!==currentTower){ log(`🔁 Switching farm → ${tower}`); resetTiles(); clearAllTimers(); }
+    elTopics.textContent=`farm/${tower}/(status|device/status|sensor|notification|control|device|ack|err|motor/+/ack|motor/+/err)`;
+
+    try{ if(client){ const old=Object.values(topics||{}); if(old.length) try{client.unsubscribe(old);}catch(_){ } client.end(true);} }catch(_){}
+    currentTower=tower; topics=nextTopics;
+
+    ensureMqtt(()=>{
+      const opts=buildOptions(tower,pass);
+      log(`🔌 Connecting to ${BROKER_URL} as ${tower} …`); setBadge('Connecting…',false); setConnectedUI(true);
+      client=mqtt.connect(BROKER_URL,opts);
+      client.on('connect',()=>{ resetTiles(); setBadge('Connected',true); log('✅ Connected to EMQX (secure WebSocket)'); subscribeAll(); });
+      client.on('reconnect',()=>{ setBadge('Reconnecting…',false); log('♻️ Reconnecting…'); });
+      client.on('close',()=>{ setBadge('Disconnected',false); setConnectedUI(false); clearAllTimers(); log('🔚 Connection closed'); });
+      client.on('error',err=>{ setBadge('Error',false); log(`❌ Error: ${err&&err.message?err.message:err}`); });
+      client.on('message',(topic,payload)=>{
+        const text=payload?payload.toString():'';
+        log(`📥 ${topic} → ${text}`);
+        if(topic===topics.status) tileStatus.textContent=pretty(text);
+        else if(topic===topics.deviceStatus) tileDev.textContent=pretty(text);
+        else if(topic===topics.sensor) tileSensor.textContent=pretty(text);
+        else if(topic===topics.notification) tileNote.textContent=pretty(text);
+        else if(topic===topics.ack || topic===topics.err || (topic.startsWith(`farm/${currentTower}/motor/`) && (topic.endsWith('/ack')||topic.endsWith('/err')))) handleAckErr(topic,text);
+      });
+    });
+  }
+
+  async function authorizeThenConnect(){
+    const tower=(elTower.value||'').trim(), pass=(elPass.value||'').trim();
+    if(!tower||!pass){ alert('Please enter Tower ID and Tower Password.'); return; }
+    try{
+      setBadge('Authorizing…',false);
+      const nonce=window.PIVOT_REST_NONCE||'';
+      const res=await fetch(`/wp-json/pivot/v1/can-connect?tower_id=${encodeURIComponent(tower)}`,{credentials:'same-origin',headers:nonce?{'X-WP-Nonce':nonce}:{}});
+      const data=await res.json();
+      if(!data||!data.ok){ setBadge('Access denied',false); log(`⛔ Not authorized${data&&data.reason?' ('+data.reason+')':''}`); return; }
+      log(`✅ Authorization OK for Farm ${data.farm_key}`);
+    }catch(e){ setBadge('Auth error',false); log(`❌ Authorization request failed: ${e.message||e}`); return; }
+    connectNow(tower,pass,{freshSwitch:(currentTower&&currentTower!==tower)});
+  }
+
+  /* ---------- bind UI ---------- */
+  btnConn.addEventListener('click', authorizeThenConnect);
+  btnDisc.addEventListener('click', ()=>{ if(client){ log('🔌 Disconnecting…'); try{client.end(true,()=>log('🔚 Disconnected'));}catch(_){}} setBadge('Disconnected',false); setConnectedUI(false); resetTiles(); clearAllTimers(); });
+  btnStart.addEventListener('click', ()=> publish(topics.control, toSpecPivot({run:'START'}), btnStart));
+  btnStop .addEventListener('click', ()=> publish(topics.control, toSpecPivot({run:'STOP'}),  btnStop));
+
+  const runEl=$('ctl-run'), dirEl=$('ctl-dir'), modeEl=$('ctl-mode'), spdEl=$('ctl-speed'), prsEl=$('ctl-press'), keyEl=$('ctl-auth');
+  $('btn-send-control').addEventListener('click', ()=>{
+    const p={ run: (valOf(runEl)==='true')?'START':'STOP', direction: valOf(dirEl), mode: valOf(modeEl), speed: Number(valOf(spdEl)||0), pressure: Number(valOf(prsEl)||0), authKey: valOf(keyEl) };
+    window.PC.sendPivotControl(p, $('btn-send-control'));
+  });
+
+  const actionEl=$('dev-action'), serialEl=$('dev-serial'), dtypeEl=$('dev-type');
+  $('btn-send-device').addEventListener('click', ()=>{
+    const p={ action: valOf(actionEl), serial: valOf(serialEl), deviceType: valOf(dtypeEl) };
+    if(!p.action||!p.serial) return alert('Device Action and Device Serial are required.');
+    window.PC.sendDeviceCmd(p, $('btn-send-device'));
+  });
+
+  const motorEl=$('motor-id');
+  $('btn-motor-start').addEventListener('click', ()=>{ const id=valOf(motorEl); if(!id) return alert('Enter a Motor ID.'); window.PC.sendMotorControl({motorId:id,command:'START_MOTOR'}, $('btn-motor-start')); });
+  $('btn-motor-stop') .addEventListener('click', ()=>{ const id=valOf(motorEl); if(!id) return alert('Enter a Motor ID.'); window.PC.sendMotorControl({motorId:id,command:'STOP_MOTOR'},  $('btn-motor-stop')); });
+
+  // Prefill Tower from page headings
+  try{
+    const hint=[...document.querySelectorAll('h1,h2,h3')].map(e=>e.textContent||'').find(t=>/Farm ID:\s*FARM-[A-Z0-9-]+/i.test(t));
+    if(hint){ const m=hint.match(/FARM-[A-Z0-9-]+/i); if(m) elTower.value=m[0]; }
+  }catch(_){}
+})();
+</script>
